@@ -291,52 +291,58 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
+static bool SplitAndroidSafDocumentUriPath(std::string_view full_path, std::string* path,
+                                           std::string* filename, std::string* extension)
+{
+  if (!full_path.starts_with("content://"))
+    return false;
+
+  // Android SAF document URIs encode path separators in the document id as "%2F",
+  // e.g. ".../document/XXXX%3AROMs%2Fgc%2FGame.m3u". Splitting only on literal '/'
+  // incorrectly drops the encoded parent path.
+  constexpr std::string_view document_marker = "/document/";
+  const size_t marker_pos = full_path.rfind(document_marker);
+  if (marker_pos == std::string_view::npos)
+    return false;
+
+  const size_t doc_id_start = marker_pos + document_marker.size();
+  const std::string_view document_id = full_path.substr(doc_id_start);
+
+  size_t encoded_sep_pos = document_id.rfind("%2F");
+  if (encoded_sep_pos == std::string_view::npos)
+    encoded_sep_pos = document_id.rfind("%2f");
+  if (encoded_sep_pos == std::string_view::npos)
+    return false;
+
+  const size_t encoded_sep_end = encoded_sep_pos + 3;
+  const size_t dir_end = doc_id_start + encoded_sep_end;
+  const size_t fname_start = dir_end;
+
+  size_t fname_end_rel = document_id.rfind('.');
+  size_t fname_end = full_path.size();
+  if (fname_end_rel != std::string_view::npos && (doc_id_start + fname_end_rel) >= fname_start)
+    fname_end = doc_id_start + fname_end_rel;
+
+  if (path)
+    *path = full_path.substr(0, dir_end);
+
+  if (filename)
+    *filename = full_path.substr(fname_start, fname_end - fname_start);
+
+  if (extension)
+    *extension = full_path.substr(fname_end);
+
+  return true;
+}
+
 bool SplitPath(std::string_view full_path, std::string* path, std::string* filename,
                std::string* extension)
 {
   if (full_path.empty())
     return false;
 
-  // Android SAF document URIs encode path separators in the document id as "%2F",
-  // e.g. ".../document/XXXX%3AROMs%2Fgc%2FGame.m3u". Splitting only on literal '/'
-  // incorrectly drops the encoded parent path.
-  if (full_path.starts_with("content://"))
-  {
-    constexpr std::string_view document_marker = "/document/";
-    const size_t marker_pos = full_path.rfind(document_marker);
-    if (marker_pos != std::string_view::npos)
-    {
-      const size_t doc_id_start = marker_pos + document_marker.size();
-      const std::string_view document_id = full_path.substr(doc_id_start);
-
-      size_t encoded_sep_pos = document_id.rfind("%2F");
-      if (encoded_sep_pos == std::string_view::npos)
-        encoded_sep_pos = document_id.rfind("%2f");
-
-      if (encoded_sep_pos != std::string_view::npos)
-      {
-        const size_t encoded_sep_end = encoded_sep_pos + 3;
-        const size_t dir_end = doc_id_start + encoded_sep_end;
-        const size_t fname_start = dir_end;
-
-        size_t fname_end_rel = document_id.rfind('.');
-        size_t fname_end = full_path.size();
-        if (fname_end_rel != std::string_view::npos && (doc_id_start + fname_end_rel) >= fname_start)
-          fname_end = doc_id_start + fname_end_rel;
-
-        if (path)
-          *path = full_path.substr(0, dir_end);
-
-        if (filename)
-          *filename = full_path.substr(fname_start, fname_end - fname_start);
-
-        if (extension)
-          *extension = full_path.substr(fname_end);
-
-        return true;
-      }
-    }
-  }
+  if (SplitAndroidSafDocumentUriPath(full_path, path, filename, extension))
+    return true;
 
   size_t dir_end = full_path.find_last_of(
 // Windows needs the : included for something like just "C:" to be considered a directory
