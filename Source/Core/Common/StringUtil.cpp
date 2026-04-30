@@ -291,23 +291,8 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
-static bool SplitAndroidSafDocumentUriPath(std::string_view full_path, std::string* path,
-                                           std::string* filename, std::string* extension)
+static size_t FindLastPathSeparatorIndex(std::string_view full_path)
 {
-  if (!full_path.starts_with("content://"))
-    return false;
-
-  // Android SAF document URIs encode path separators in the document id as "%2F",
-  // e.g. ".../document/XXXX%3AROMs%2Fgc%2FGame.m3u". Splitting only on literal '/'
-  // incorrectly drops the encoded parent path.
-  constexpr std::string_view document_marker = "/document/";
-  const size_t marker_pos = full_path.rfind(document_marker);
-  if (marker_pos == std::string_view::npos)
-    return false;
-
-  const size_t doc_id_start = marker_pos + document_marker.size();
-  const std::string_view document_id = full_path.substr(doc_id_start);
-
   auto hex_value = [](char c) -> int {
     if (c >= '0' && c <= '9')
       return c - '0';
@@ -318,18 +303,19 @@ static bool SplitAndroidSafDocumentUriPath(std::string_view full_path, std::stri
     return -1;
   };
 
-  // Find the final decoded '/' inside the encoded SAF document id.
-  size_t last_decoded_sep_end = std::string_view::npos;
+  // Find the final decoded separator. This allows generic handling of paths
+  // that include percent-encoded separators (e.g. "%2F"), such as SAF URIs.
+  size_t last_separator_end = std::string_view::npos;
   size_t i = 0;
-  while (i < document_id.size())
+  while (i < full_path.size())
   {
-    char decoded = document_id[i];
+    char decoded = full_path[i];
     size_t consumed = 1;
 
-    if (decoded == '%' && i + 2 < document_id.size())
+    if (decoded == '%' && i + 2 < full_path.size())
     {
-      const int hi = hex_value(document_id[i + 1]);
-      const int lo = hex_value(document_id[i + 2]);
+      const int hi = hex_value(full_path[i + 1]);
+      const int lo = hex_value(full_path[i + 2]);
       if (hi >= 0 && lo >= 0)
       {
         decoded = static_cast<char>((hi << 4) | lo);
@@ -338,32 +324,16 @@ static bool SplitAndroidSafDocumentUriPath(std::string_view full_path, std::stri
     }
 
     if (decoded == '/')
-      last_decoded_sep_end = i + consumed;
+      last_separator_end = i + consumed;
+#ifdef _WIN32
+    else if (decoded == ':')
+      last_separator_end = i + consumed;
+#endif
 
     i += consumed;
   }
 
-  if (last_decoded_sep_end == std::string_view::npos)
-    return false;
-
-  const size_t dir_end = doc_id_start + last_decoded_sep_end;
-  const size_t fname_start = dir_end;
-
-  size_t fname_end_rel = document_id.rfind('.');
-  size_t fname_end = full_path.size();
-  if (fname_end_rel != std::string_view::npos && (doc_id_start + fname_end_rel) >= fname_start)
-    fname_end = doc_id_start + fname_end_rel;
-
-  if (path)
-    *path = full_path.substr(0, dir_end);
-
-  if (filename)
-    *filename = full_path.substr(fname_start, fname_end - fname_start);
-
-  if (extension)
-    *extension = full_path.substr(fname_end);
-
-  return true;
+  return last_separator_end;
 }
 
 bool SplitPath(std::string_view full_path, std::string* path, std::string* filename,
@@ -372,21 +342,9 @@ bool SplitPath(std::string_view full_path, std::string* path, std::string* filen
   if (full_path.empty())
     return false;
 
-  if (SplitAndroidSafDocumentUriPath(full_path, path, filename, extension))
-    return true;
-
-  size_t dir_end = full_path.find_last_of(
-// Windows needs the : included for something like just "C:" to be considered a directory
-#ifdef _WIN32
-      "/:"
-#else
-      '/'
-#endif
-  );
+  size_t dir_end = FindLastPathSeparatorIndex(full_path);
   if (std::string::npos == dir_end)
     dir_end = 0;
-  else
-    dir_end += 1;
 
   size_t fname_end = full_path.rfind('.');
   if (fname_end < dir_end || std::string::npos == fname_end)
