@@ -308,14 +308,45 @@ static bool SplitAndroidSafDocumentUriPath(std::string_view full_path, std::stri
   const size_t doc_id_start = marker_pos + document_marker.size();
   const std::string_view document_id = full_path.substr(doc_id_start);
 
-  size_t encoded_sep_pos = document_id.rfind("%2F");
-  if (encoded_sep_pos == std::string_view::npos)
-    encoded_sep_pos = document_id.rfind("%2f");
-  if (encoded_sep_pos == std::string_view::npos)
+  auto hex_value = [](char c) -> int {
+    if (c >= '0' && c <= '9')
+      return c - '0';
+    if (c >= 'a' && c <= 'f')
+      return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F')
+      return 10 + (c - 'A');
+    return -1;
+  };
+
+  // Find the final decoded '/' inside the encoded SAF document id.
+  size_t last_decoded_sep_end = std::string_view::npos;
+  size_t i = 0;
+  while (i < document_id.size())
+  {
+    char decoded = document_id[i];
+    size_t consumed = 1;
+
+    if (decoded == '%' && i + 2 < document_id.size())
+    {
+      const int hi = hex_value(document_id[i + 1]);
+      const int lo = hex_value(document_id[i + 2]);
+      if (hi >= 0 && lo >= 0)
+      {
+        decoded = static_cast<char>((hi << 4) | lo);
+        consumed = 3;
+      }
+    }
+
+    if (decoded == '/')
+      last_decoded_sep_end = i + consumed;
+
+    i += consumed;
+  }
+
+  if (last_decoded_sep_end == std::string_view::npos)
     return false;
 
-  const size_t encoded_sep_end = encoded_sep_pos + 3;
-  const size_t dir_end = doc_id_start + encoded_sep_end;
+  const size_t dir_end = doc_id_start + last_decoded_sep_end;
   const size_t fname_start = dir_end;
 
   size_t fname_end_rel = document_id.rfind('.');
