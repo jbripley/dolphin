@@ -317,6 +317,13 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
   // that include percent-encoded separators (e.g. "%2F"), such as Android
   // Storage Access Framework (SAF) URIs:
   // https://developer.android.com/guide/topics/providers/document-provider
+  constexpr bool include_colon_separator =
+#ifdef _WIN32
+      true;
+#else
+      false;
+#endif
+
   size_t last_separator_end = std::string_view::npos;
   size_t i = 0;
   while (i < full_path.size())
@@ -334,12 +341,8 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
       }
     }
 
-    if (decoded == '/')
+    if (decoded == '/' || (include_colon_separator && decoded == ':'))
       last_separator_end = i + consumed;
-#ifdef _WIN32
-    else if (decoded == ':')
-      last_separator_end = i + consumed;
-#endif
 
     i += consumed;
   }
