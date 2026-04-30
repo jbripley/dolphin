@@ -291,7 +291,7 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
-static size_t FindLastPathSeparatorIndex(std::string_view full_path)
+static int DecodePercentHexByte(char hi, char lo)
 {
   auto hex_value = [](char c) -> int {
     if (c >= '0' && c <= '9')
@@ -303,8 +303,20 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
     return -1;
   };
 
+  const int high = hex_value(hi);
+  const int low = hex_value(lo);
+  if (high < 0 || low < 0)
+    return -1;
+
+  return (high << 4) | low;
+}
+
+static size_t FindLastPathSeparatorIndex(std::string_view full_path)
+{
   // Find the final decoded separator. This allows generic handling of paths
-  // that include percent-encoded separators (e.g. "%2F"), such as SAF URIs.
+  // that include percent-encoded separators (e.g. "%2F"), such as Android
+  // Storage Access Framework (SAF) URIs:
+  // https://developer.android.com/guide/topics/providers/document-provider
   size_t last_separator_end = std::string_view::npos;
   size_t i = 0;
   while (i < full_path.size())
@@ -314,11 +326,10 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
 
     if (decoded == '%' && i + 2 < full_path.size())
     {
-      const int hi = hex_value(full_path[i + 1]);
-      const int lo = hex_value(full_path[i + 2]);
-      if (hi >= 0 && lo >= 0)
+      const int byte = DecodePercentHexByte(full_path[i + 1], full_path[i + 2]);
+      if (byte >= 0)
       {
-        decoded = static_cast<char>((hi << 4) | lo);
+        decoded = static_cast<char>(byte);
         consumed = 3;
       }
     }
