@@ -291,7 +291,7 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
-static int DecodePercentHexByte(char hi, char lo)
+static int TryDecodePercentEncodedByte(char hi, char lo)
 {
   auto hex_value = [](char c) -> int {
     if (c >= '0' && c <= '9')
@@ -332,7 +332,7 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
 
     if (decoded == '%' && i + 2 < full_path.size())
     {
-      const int byte = DecodePercentHexByte(full_path[i + 1], full_path[i + 2]);
+      const int byte = TryDecodePercentEncodedByte(full_path[i + 1], full_path[i + 2]);
       if (byte >= 0)
       {
         decoded = static_cast<char>(byte);
