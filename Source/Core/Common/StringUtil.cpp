@@ -325,8 +325,7 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
 #endif
 
   size_t last_separator_end = std::string_view::npos;
-  size_t i = 0;
-  while (i < full_path.size())
+  for (size_t i = 0; i < full_path.size();)
   {
     char decoded = full_path[i];
     size_t consumed = 1;
