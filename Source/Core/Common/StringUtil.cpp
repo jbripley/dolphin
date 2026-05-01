@@ -292,7 +292,7 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
-static std::optional<char> TryParsePercentEncodedByte(char hi, char lo)
+static std::optional<char> TryDecodePercentEncodedChar(char hi, char lo)
 {
   constexpr auto hex_value = [](char c) -> int {
     if (c >= '0' && c <= '9')
@@ -334,7 +334,7 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
     if (decoded == '%' && i + 2 < full_path.size())
     {
       const std::optional<char> decoded_byte =
-          TryParsePercentEncodedByte(full_path[i + 1], full_path[i + 2]);
+          TryDecodePercentEncodedChar(full_path[i + 1], full_path[i + 2]);
       if (decoded_byte.has_value())
       {
         decoded = *decoded_byte;
