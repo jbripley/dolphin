@@ -13,6 +13,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iterator>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -291,7 +292,7 @@ std::string ValueToString(bool value)
   return value ? "True" : "False";
 }
 
-static int TryParsePercentEncodedByte(char hi, char lo)
+static std::optional<char> TryParsePercentEncodedByte(char hi, char lo)
 {
   constexpr auto hex_value = [](char c) -> int {
     if (c >= '0' && c <= '9')
@@ -306,9 +307,9 @@ static int TryParsePercentEncodedByte(char hi, char lo)
   const int high = hex_value(hi);
   const int low = hex_value(lo);
   if (high < 0 || low < 0)
-    return -1;
+    return std::nullopt;
 
-  return (high << 4) | low;
+  return static_cast<char>((high << 4) | low);
 }
 
 static size_t FindLastPathSeparatorIndex(std::string_view full_path)
@@ -332,10 +333,11 @@ static size_t FindLastPathSeparatorIndex(std::string_view full_path)
 
     if (decoded == '%' && i + 2 < full_path.size())
     {
-      const int decoded_byte = TryParsePercentEncodedByte(full_path[i + 1], full_path[i + 2]);
-      if (decoded_byte >= 0)
+      const std::optional<char> decoded_byte =
+          TryParsePercentEncodedByte(full_path[i + 1], full_path[i + 2]);
+      if (decoded_byte.has_value())
       {
-        decoded = static_cast<char>(decoded_byte);
+        decoded = *decoded_byte;
         consumed = 3;
       }
     }
