@@ -135,6 +135,9 @@ private:
   bool ReadXMLMetadata(const std::string& path);
   bool ReadPNGBanner(const std::string& path);
   bool TryLoadGameModDescriptorBanner();
+#ifdef ANDROID
+  bool TryLoadM3UProxy();
+#endif
   bool CheckIfTwoDiscGame(const std::string& game_id) const;
 
   // IMPORTANT: Nearly all data members must be save/restored in DoState.

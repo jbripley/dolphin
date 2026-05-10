@@ -60,6 +60,9 @@ jlong GetAndroidContentSizeAndIsDirectory(std::string_view uri);
 // An empty string will be returned for files which do not exist.
 std::string GetAndroidContentDisplayName(std::string_view uri);
 
+// Returns a URI for the parent directory of the given content URI, or an empty string.
+std::string GetAndroidContentParentDirectory(std::string_view uri);
+
 // Returns the display names of all children of a directory, non-recursively.
 std::vector<std::string> GetAndroidContentChildNames(std::string_view uri);
 

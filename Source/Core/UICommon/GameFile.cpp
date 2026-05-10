@@ -7,8 +7,10 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -60,6 +62,39 @@ bool UseGameCovers()
   return Config::Get(Config::MAIN_USE_GAME_COVERS);
 #endif
 }
+
+#ifdef ANDROID
+bool IsM3UExtension(std::string_view extension)
+{
+  return extension == ".m3u" || extension == ".m3u8";
+}
+
+std::optional<std::string> FindFirstExistingM3UEntry(const std::string& m3u_path)
+{
+  std::string folder_path;
+  SplitPath(m3u_path, &folder_path, nullptr, nullptr);
+
+  std::ifstream stream;
+  File::OpenFStream(stream, m3u_path, std::ios_base::in);
+
+  std::string line;
+  while (std::getline(stream, line))
+  {
+    constexpr std::string_view utf8_bom = "\xEF\xBB\xBF";
+    if (line.starts_with(utf8_bom))
+      line.erase(0, utf8_bom.length());
+
+    if (line.empty() || line.front() == '#')
+      continue;
+
+    const std::string path = PathToString(StringToPath(folder_path) / StringToPath(line));
+    if (File::Exists(path))
+      return path;
+  }
+
+  return std::nullopt;
+}
+#endif
 }  // Anonymous namespace
 
 DiscIO::Language GameFile::GetConfigLanguage() const
@@ -180,6 +215,11 @@ GameFile::GameFile(std::string path) : m_file_path(std::move(path))
       }
     }
   }
+
+#ifdef ANDROID
+  if (!IsValid())
+    TryLoadM3UProxy();
+#endif
 }
 
 GameFile::~GameFile() = default;
@@ -344,6 +384,31 @@ bool GameFile::IsElfOrDol() const
   const std::string extension = GetExtension();
   return extension == ".elf" || extension == ".dol";
 }
+
+#ifdef ANDROID
+bool GameFile::TryLoadM3UProxy()
+{
+  if (!IsM3UExtension(GetExtension()))
+    return false;
+
+  const std::optional<std::string> first_entry = FindFirstExistingM3UEntry(m_file_path);
+  if (!first_entry)
+    return false;
+
+  GameFile proxy(*first_entry);
+  if (!proxy.IsValid())
+    return false;
+
+  std::string playlist_path = std::move(m_file_path);
+  std::string playlist_file_name = std::move(m_file_name);
+  *this = std::move(proxy);
+  m_file_path = playlist_path;
+  m_file_name = playlist_file_name;
+  m_file_size = File::GetSize(m_file_path);
+  m_is_two_disc_game = true;
+  return true;
+}
+#endif
 
 bool GameFile::ReadXMLMetadata(const std::string& path)
 {

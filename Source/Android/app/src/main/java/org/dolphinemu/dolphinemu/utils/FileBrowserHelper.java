@@ -30,7 +30,7 @@ public final class FileBrowserHelper
 {
   public static final HashSet<String> GAME_EXTENSIONS = new HashSet<>(Arrays.asList(
           "gcm", "tgc", "bin", "iso", "ciso", "gcz", "wbfs", "wia", "rvz", "nfs", "wad", "dol",
-          "elf", "json"));
+          "elf", "json", "m3u", "m3u8"));
 
   public static final HashSet<String> GAME_LIKE_EXTENSIONS = new HashSet<>(GAME_EXTENSIONS);
 

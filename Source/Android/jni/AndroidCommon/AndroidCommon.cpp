@@ -180,6 +180,27 @@ std::string GetAndroidContentDisplayName(std::string_view uri)
   return result;
 }
 
+std::string GetAndroidContentParentDirectory(std::string_view uri)
+{
+  JNIEnv* env = IDCache::GetEnvForThread();
+
+  jstring j_uri = ToJString(env, uri);
+
+  jstring j_result = reinterpret_cast<jstring>(env->CallStaticObjectMethod(
+      IDCache::GetContentHandlerClass(), IDCache::GetContentHandlerGetParentDirectory(), j_uri));
+
+  env->DeleteLocalRef(j_uri);
+
+  if (!j_result)
+    return "";
+
+  std::string result = GetJString(env, j_result);
+
+  env->DeleteLocalRef(j_result);
+
+  return result;
+}
+
 std::vector<std::string> GetAndroidContentChildNames(std::string_view uri)
 {
   JNIEnv* env = IDCache::GetEnvForThread();

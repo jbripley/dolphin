@@ -43,6 +43,7 @@ static jmethodID s_content_handler_open_fd;
 static jmethodID s_content_handler_delete;
 static jmethodID s_content_handler_get_size_and_is_directory;
 static jmethodID s_content_handler_get_display_name;
+static jmethodID s_content_handler_get_parent_directory;
 static jmethodID s_content_handler_get_child_names;
 static jmethodID s_content_handler_do_file_search;
 
@@ -278,6 +279,11 @@ jmethodID GetContentHandlerGetSizeAndIsDirectory()
 jmethodID GetContentHandlerGetDisplayName()
 {
   return s_content_handler_get_display_name;
+}
+
+jmethodID GetContentHandlerGetParentDirectory()
+{
+  return s_content_handler_get_parent_directory;
 }
 
 jmethodID GetContentHandlerGetChildNames()
@@ -651,6 +657,8 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
       s_content_handler_class, "getSizeAndIsDirectory", "(Ljava/lang/String;)J");
   s_content_handler_get_display_name = env->GetStaticMethodID(
       s_content_handler_class, "getDisplayName", "(Ljava/lang/String;)Ljava/lang/String;");
+  s_content_handler_get_parent_directory = env->GetStaticMethodID(
+      s_content_handler_class, "getParentDirectory", "(Ljava/lang/String;)Ljava/lang/String;");
   s_content_handler_get_child_names = env->GetStaticMethodID(
       s_content_handler_class, "getChildNames", "(Ljava/lang/String;Z)[Ljava/lang/String;");
   s_content_handler_do_file_search =

@@ -151,6 +151,38 @@ public class ContentHandler
     return null;
   }
 
+  @Nullable @Keep
+  public static String getParentDirectory(@NonNull String uri)
+  {
+    try
+    {
+      Uri parentUri = getParentDirectory(unmangle(uri));
+      return parentUri != null ? parentUri.toString() : null;
+    }
+    catch (Exception ignored)
+    {
+    }
+
+    return null;
+  }
+
+  @Nullable
+  private static Uri getParentDirectory(@NonNull Uri uri)
+  {
+    String documentId = DocumentsContract.getDocumentId(treeToDocument(uri));
+    int parentIdEnd = documentId.lastIndexOf('/');
+    if (parentIdEnd == -1)
+    {
+      int rootSeparator = documentId.indexOf(':');
+      if (rootSeparator == -1 || rootSeparator == documentId.length() - 1)
+        return null;
+
+      parentIdEnd = rootSeparator + 1;
+    }
+
+    return DocumentsContract.buildDocumentUriUsingTree(uri, documentId.substring(0, parentIdEnd));
+  }
+
   @Nullable
   public static String getDisplayName(@NonNull Uri uri)
   {

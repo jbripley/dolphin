@@ -209,6 +209,25 @@ std::unique_ptr<BootParameters> BootParameters::GenerateFromFile(std::vector<std
   SplitPath(paths.front(), &folder_path, nullptr, &extension);
   Common::ToLower(&extension);
 
+#ifdef ANDROID
+  if (IsPathAndroidContent(paths.front()))
+  {
+    if (extension.empty())
+    {
+      const std::string display_name = GetAndroidContentDisplayName(paths.front());
+      SplitPath(display_name, nullptr, nullptr, &extension);
+      Common::ToLower(&extension);
+    }
+
+    if (extension == ".m3u" || extension == ".m3u8")
+    {
+      const std::string content_parent = GetAndroidContentParentDirectory(paths.front());
+      if (!content_parent.empty())
+        folder_path = content_parent;
+    }
+  }
+#endif
+
   if (extension == ".m3u" || extension == ".m3u8")
   {
     paths = ReadM3UFile(paths.front(), folder_path);

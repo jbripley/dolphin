@@ -43,6 +43,7 @@ jmethodID GetContentHandlerOpenFd();
 jmethodID GetContentHandlerDelete();
 jmethodID GetContentHandlerGetSizeAndIsDirectory();
 jmethodID GetContentHandlerGetDisplayName();
+jmethodID GetContentHandlerGetParentDirectory();
 jmethodID GetContentHandlerGetChildNames();
 jmethodID GetContentHandlerDoFileSearch();
 
